@@ -23,19 +23,26 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip
-          mkdir -p $HOME/android-sdk/cmdline-tools/latest
+          mkdir -p $HOME/android-sdk/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools/latest
+          unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
           rm cmdline-tools.zip
 
       - name: Verify SDK Installation Directory
         run: |
-          echo "Contents of $HOME/android-sdk/cmdline-tools/latest/bin/"
-          ls -l $HOME/android-sdk/cmdline-tools/latest/bin/
+          echo "Contents of $HOME/android-sdk/cmdline-tools/"
+          ls -l $HOME/android-sdk/cmdline-tools/
 
       - name: Configure Android SDK
         run: |
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+          # Determine the correct path for sdkmanager
+          ls -l $HOME/android-sdk/cmdline-tools
+          if [ -d "$HOME/android-sdk/cmdline-tools/bin" ]; then
+            yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+          else
+            echo "sdkmanager not found in expected location"
+            exit 1
+          fi
 
       - name: Set up environment variables
         run: echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
@@ -44,4 +51,4 @@ jobs:
         run: |
           echo "Android SDK installed:"
           $HOME/android-sdk/platform-tools/adb --version
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --list
+          $HOME/android-sdk/cmdline-tools/bin/sdkmanager --list
