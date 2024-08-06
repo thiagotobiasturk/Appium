@@ -27,18 +27,26 @@ jobs:
     - name: Install Android SDK
       run: |
         sudo apt-get update
-        sudo apt-get install -y openjdk-11-jdk
-        wget https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip
+        sudo apt-get install -y openjdk-11-jdk wget unzip
+
+        # Descarga y configura el SDK de Android
         mkdir -p $HOME/android-sdk/cmdline-tools
-        unzip commandlinetools-linux-8512546_latest.zip -d $HOME/android-sdk/cmdline-tools
-        yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
-        $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-31" "system-images;android-31;google_apis;x86_64"
+        wget https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O cmdline-tools.zip
+        unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
+        rm cmdline-tools.zip
+
+        # Configura el SDK de Android
         echo "export ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
         echo "export PATH=$PATH:$HOME/android-sdk/platform-tools:$HOME/android-sdk/emulator:$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_ENV
+        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
-    - name: Create AVD
+        # Instala las herramientas necesarias
+        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --update
+        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-31" "system-images;android-31;google_apis;x86_64"
+
+    - name: Create and Start AVD
       run: |
-        echo "no" | $HOME/android-sdk/emulator/emulator -list-avds
+        echo "no" | $HOME/android-sdk/cmdline-tools/latest/bin/avdmanager create avd -n Pixel_API_31_Android_V12 -k "system-images;android-31;google_apis;x86_64" --device "pixel"
         echo "no" | $HOME/android-sdk/emulator/emulator -avd Pixel_API_31_Android_V12 -no-boot-anim -no-audio &
         emulator_pid=$!
         $HOME/android-sdk/platform-tools/adb wait-for-device
@@ -50,13 +58,13 @@ jobs:
       env:
         APP_ENV: test
 
-    # - name: Upload test results
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: test-results
-    #     path: path/to/your/test-results/* # Ajusta la ruta a tus resultados de pruebas
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: path/to/your/test-results/* # Ajusta la ruta a tus resultados de pruebas
 
-    # - name: Notify on failure
-    #   if: failure()
-    #   run: |
-    #     echo "Tests failed. Please check the logs."
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "Tests failed. Please check the logs."
