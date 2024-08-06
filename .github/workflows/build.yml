@@ -31,13 +31,12 @@ jobs:
       - name: Verify SDK Installation Directory
         run: |
           echo "Contents of $HOME/android-sdk/cmdline-tools/"
-          ls -l $HOME/android-sdk/cmdline-tools/
+          ls -R $HOME/android-sdk/cmdline-tools/
 
       - name: Configure Android SDK
         run: |
           # Determine the correct path for sdkmanager
-          ls -l $HOME/android-sdk/cmdline-tools
-          if [ -d "$HOME/android-sdk/cmdline-tools/bin" ]; then
+          if [ -f "$HOME/android-sdk/cmdline-tools/bin/sdkmanager" ]; then
             yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-30" "build-tools;30.0.3"
           else
             echo "sdkmanager not found in expected location"
