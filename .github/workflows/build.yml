@@ -28,6 +28,11 @@ jobs:
           unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools/latest
           rm cmdline-tools.zip
 
+      - name: Verify SDK Installation Directory
+        run: |
+          echo "Contents of $HOME/android-sdk/cmdline-tools/latest/bin/"
+          ls -l $HOME/android-sdk/cmdline-tools/latest/bin/
+
       - name: Configure Android SDK
         run: |
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-30" "build-tools;30.0.3"
