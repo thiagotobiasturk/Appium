@@ -23,14 +23,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip
-          mkdir -p $HOME/android-sdk/cmdline-tools
+          mkdir -p $HOME/android-sdk/cmdline-tools/latest
           wget https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
+          unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools/latest
           rm cmdline-tools.zip
 
       - name: Configure Android SDK
         run: |
-          yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-30" "build-tools;30.0.3"
 
       - name: Set up environment variables
         run: echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
@@ -39,4 +39,4 @@ jobs:
         run: |
           echo "Android SDK installed:"
           $HOME/android-sdk/platform-tools/adb --version
-          $HOME/android-sdk/cmdline-tools/bin/sdkmanager --list
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --list
