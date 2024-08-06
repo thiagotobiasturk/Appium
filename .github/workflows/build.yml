@@ -1,78 +1,58 @@
-name: Run Appium Tests
-
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
+    branches: [ master ]
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-
+  build:
+    runs-on: [ self-hosted, macOS ]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v2
+      - name: Anka VM GitHub Action
+        uses: veertuinc/anka-vm-github-action@v1.3.0
+        with:
+          anka-vm-template-name: "android-demo"
+          anka-run-options: "--env -N -T"
+          skip-registry-pull: true
+          anka-cp-destination-directory: "/Users/anka/android-emulator-on-host-example/"
+          vm-commands: |
+            set -exo pipefail
 
-    - name: Set up JDK
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'temurin'  # Reemplaza con la distribución que prefieras
+            cd /Users/anka/android-emulator-on-host-example
 
-    - name: Install Android SDK
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y wget unzip
-        wget https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip -O android-commandlinetools.zip
-        unzip android-commandlinetools.zip -d $ANDROID_HOME/cmdline-tools
-        export ANDROID_HOME=$HOME/android-sdk
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+            export JAVA_HOME=\"/Applications/Android Studio.app/Contents/jre/jdk/Contents/Home\"
+            [[ ! -d \"\$JAVA_HOME\" ]] && echo \"Missing Android Studio installation... Please install it and try again\!\" && exit 1
+            export ANDROID_HOME=\"\$HOME/Library/Android/sdk\"
+            
+            ./gradlew --stop
+            ./gradlew clean
+            ./gradlew assembleDebug
+            ./gradlew test
 
-    - name: Accept licenses
-      run: yes | sdkmanager --licenses
+            VM_LABEL=\$(env | grep \"\${GITHUB_ACTION}_vmLabel=\" | cut -d\"=\" -f2)
+            HOST_STORAGE_LOC="/tmp/\$GITHUB_RUN_NUMBER-\$GITHUB_RUN_ID"
 
-    - name: Download system image and create AVD
-      run: |
-        echo 'y' | sdkmanager --install "system-images;android-30;google_apis;x86"
-        echo 'no' | avdmanager create avd -n "emulator-30" -d "pixel" -k "system-images;android-30;google_apis;x86" -c 128M -f
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no nathanpierce@192.168.64.1 \"source \\\$HOME/.zshrc
+              set -exo pipefail
+              mkdir -p \$HOST_STORAGE_LOC
+              /usr/local/bin/anka cp -af \${VM_LABEL}:/Users/anka/android-emulator-on-host-example/ \$HOST_STORAGE_LOC
+            \"
 
-    - name: Configure AVD
-      run: |
-        printf 'hw.keyboard = yes\nhw.ramSize = 1024\n' >> ~/.android/avd/emulator-30.avd/config.ini
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no nathanpierce@192.168.64.1 \"source \\\$HOME/.zshrc
+              set -exo pipefail
+              export PATH=/usr/local/bin:\\\$PATH
+              export ANDROID_HOME=\"\\\$HOME/Library/Android/sdk\"
+              AVD_NAME=Nexus_4_API_30
+              PORT=5554
+              ~/Library/Android/sdk/tools/bin/avdmanager create avd --name \\\$AVD_NAME --device \\\"Nexus 4\\\" --package \\\"system-images;android-30;google_apis;x86\\\" --force
+              ~/Library/Android/sdk/tools/bin/sdkmanager --update
 
-    - name: Start emulator
-      run: |
-        nohup emulator -avd "emulator-30" -no-snapshot -no-boot-anim -no-audio -no-window -delay-adb >/dev/null 2>&1 &
+              nohup ~/Library/Android/sdk/emulator/emulator -avd \\\$AVD_NAME -port \\\$PORT > foo.out 2> foo.err < /dev/null &
+              sleep 5
+              export EMULATOR_PROCESS_ID=\\\$!
+              cd \$HOST_STORAGE_LOC
+              ls -laht
+              ./vm-watcher.bash --daemon \$VM_LABEL \\\$EMULATOR_PROCESS_ID
 
-    - name: Wait for emulator to start
-      run: sleep 60
-
-    - name: Print emulator version
-      run: emulator -version
-
-    - name: Print running devices
-      run: adb devices
-
-    - name: Run Appium Tests
-      run: |
-        # Ensure the emulator is fully booted
-        adb wait-for-device
-        adb shell 'while [[ "$(getprop sys.boot_completed)" != "1" || "$(getprop init.svc.bootanim)" != "stopped" ]]; do sleep 1; done;'
-        adb shell 'svc power stayon true'
-        adb shell 'settings put global window_animation_scale 0'
-        adb shell 'settings put global transition_animation_scale 0'
-        adb shell 'settings put global animator_duration_scale 0'
-        adb shell 'settings put secure long_press_timeout 1500'
-        adb shell 'settings put secure show_ime_with_hard_keyboard 0'
-        adb shell 'settings put secure spell_checker_enabled 0'
-        adb shell 'settings put secure autofill_service null'
-        adb shell input keyevent 82
-        # Run your Appium tests here
-        # e.g., `npm test` or `mvn test` or any other command to execute your tests
-
-    - name: Clean up
-      run: |
-        adb emu kill
+              sleep 60
+              EMULATOR_NAME=emulator-5554
+              ./gradlew connectedAndroidTest
+            \"
