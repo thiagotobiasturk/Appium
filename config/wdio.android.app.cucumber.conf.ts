@@ -3,6 +3,7 @@ import {config as baseConfig} from './wdio.shared.local.appium.conf.js';
 import path from "path";
 import url from 'node:url'
 
+
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 // We need to remove the `mochaOpts` from the `baseConfig` to have all
 // Mocha references removed
@@ -26,7 +27,7 @@ export const config: WebdriverIO.Config = {
     // You also need to specify where your step definitions are located.
     // See also: https://github.com/webdriverio/webdriverio/tree/main/packages/wdio-cucumber-framework#cucumberopts-options
     cucumberOpts: {
-        require: [path.join(__dirname, '..', 'tests', 'steps', 'login_and_signup_steps.ts')],        // <string[]> (file/dir) require files before executing features
+        require: [path.join(__dirname, '..', 'tests', 'steps', 'login_faster_steps.ts')],        // <string[]> (file/dir) require files before executing features
         backtrace: false,   // <boolean> show full backtrace for errors
         compiler: [],       // <string[]> ("extension:module") require files with the given EXTENSION after requiring MODULE (repeatable)
         dryRun: false,      // <boolean> invoke formatters without executing steps
@@ -71,4 +72,5 @@ export const config: WebdriverIO.Config = {
             'appium:newCommandTimeout': 240,
         },
     ],
+   
 };

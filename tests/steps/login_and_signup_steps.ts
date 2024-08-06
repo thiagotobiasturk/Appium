@@ -2,9 +2,10 @@ import {Given, When, Then} from '@wdio/cucumber-framework'
 import TabBar from '../screenobjects/components/TabBar.js';
 import LoginScreen from '../screenobjects/LoginScreen.js';
 import NativeAlert from '../screenobjects/components/NativeAlert.js';
+import LoginPage from '../pageobjects/Login.page.js';
 
 Given(/^I am on the login tab$/, async () => {
-    await TabBar.waitForTabBarShown();
+    await LoginPage.openview();
 });
 
 When(/^I enter valid login credentials$/, async () => {
