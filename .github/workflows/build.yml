@@ -1,58 +1,41 @@
+name: Install Android SDK
+
 on:
   push:
-    branches: [ main]
+    branches:
+      - main
+
 jobs:
-  build:
-    runs-on: [ self-hosted, macOS ]
+  setup-android-sdk:
+    runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
-      - name: Anka VM GitHub Action
-        uses: veertuinc/anka-vm-github-action@v1.3.0
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
         with:
-          anka-vm-template-name: "android-demo"
-          anka-run-options: "--env -N -T"
-          skip-registry-pull: true
-          anka-cp-destination-directory: "/Users/anka/android-emulator-on-host-example/"
-          vm-commands: |
-            set -exo pipefail
+          java-version: '11'
+          distribution: 'adopt-openjdk'
 
-            cd /Users/anka/android-emulator-on-host-example
+      - name: Install Android SDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+          wget https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $HOME/android-sdk
+          rm cmdline-tools.zip
 
-            export JAVA_HOME=\"/Applications/Android Studio.app/Contents/jre/jdk/Contents/Home\"
-            [[ ! -d \"\$JAVA_HOME\" ]] && echo \"Missing Android Studio installation... Please install it and try again\!\" && exit 1
-            export ANDROID_HOME=\"\$HOME/Library/Android/sdk\"
-            
-            ./gradlew --stop
-            ./gradlew clean
-            ./gradlew assembleDebug
-            ./gradlew test
+      - name: Configure Android SDK
+        run: |
+          yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-30" "build-tools;30.0.3"
 
-            VM_LABEL=\$(env | grep \"\${GITHUB_ACTION}_vmLabel=\" | cut -d\"=\" -f2)
-            HOST_STORAGE_LOC="/tmp/\$GITHUB_RUN_NUMBER-\$GITHUB_RUN_ID"
+      - name: Set up environment variables
+        run: echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
 
-            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no nathanpierce@192.168.64.1 \"source \\\$HOME/.zshrc
-              set -exo pipefail
-              mkdir -p \$HOST_STORAGE_LOC
-              /usr/local/bin/anka cp -af \${VM_LABEL}:/Users/anka/android-emulator-on-host-example/ \$HOST_STORAGE_LOC
-            \"
-
-            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no nathanpierce@192.168.64.1 \"source \\\$HOME/.zshrc
-              set -exo pipefail
-              export PATH=/usr/local/bin:\\\$PATH
-              export ANDROID_HOME=\"\\\$HOME/Library/Android/sdk\"
-              AVD_NAME=Nexus_4_API_30
-              PORT=5554
-              ~/Library/Android/sdk/tools/bin/avdmanager create avd --name \\\$AVD_NAME --device \\\"Nexus 4\\\" --package \\\"system-images;android-30;google_apis;x86\\\" --force
-              ~/Library/Android/sdk/tools/bin/sdkmanager --update
-
-              nohup ~/Library/Android/sdk/emulator/emulator -avd \\\$AVD_NAME -port \\\$PORT > foo.out 2> foo.err < /dev/null &
-              sleep 5
-              export EMULATOR_PROCESS_ID=\\\$!
-              cd \$HOST_STORAGE_LOC
-              ls -laht
-              ./vm-watcher.bash --daemon \$VM_LABEL \\\$EMULATOR_PROCESS_ID
-
-              sleep 60
-              EMULATOR_NAME=emulator-5554
-              ./gradlew connectedAndroidTest
-            \"
+      - name: Verify Android SDK installation
+        run: |
+          echo "Android SDK installed:"
+          $HOME/android-sdk/platform-tools/adb --version
+          $HOME/android-sdk/cmdline-tools/bin/sdkmanager --list
